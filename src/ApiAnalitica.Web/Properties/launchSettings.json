@@ -1,0 +1,14 @@
+{
+  
+    "profiles": {
+      "ApiAnalitica.Web": {
+        "commandName": "Project",
+        "launchBrowser": true,
+        "launchUrl": "swagger", // <--- AGREGA ESTA LÍNEA
+        "environmentVariables": {
+          "ASPNETCORE_ENVIRONMENT": "Development"
+        },
+        "applicationUrl": "https://localhost:59895;http://localhost:59896"
+      }
+    }
+  }

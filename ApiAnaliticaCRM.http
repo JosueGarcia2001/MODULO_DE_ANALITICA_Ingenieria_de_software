@@ -1,0 +1,6 @@
+@ApiAnaliticaCRM_HostAddress = http://localhost:5176
+
+GET {{ApiAnaliticaCRM_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
