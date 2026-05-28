@@ -7,12 +7,12 @@ WORKDIR /src
 COPY ["ApiAnaliticaCRM.csproj", "."]
 RUN dotnet restore "./ApiAnaliticaCRM.csproj"
 COPY . .
-RUN dotnet build "ApiAnaliticaCRM.csproj" -c Release -o /app/build
-
-FROM build AS publish
-RUN dotnet publish "ApiAnaliticaCRM.csproj" -c Release -o /app/publish
+RUN find . -path ./src -prune -o -name "*.cs" -print
+RUN dotnet publish "ApiAnaliticaCRM.csproj" -c Release -o /app/publish \
+    --no-restore \
+    /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "ApiAnaliticaCRM.dll"]
