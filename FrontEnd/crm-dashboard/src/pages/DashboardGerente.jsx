@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getDashboardGerente, getExportUrl } from "../services/api";
 import { KPICard, FiltroFechas, AlertaBanner, Navbar, LoadingState, ErrorState, Tabla } from "../components";
+import ModuloExterno from "../components/ModuloExterno";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line
@@ -16,6 +17,7 @@ export default function DashboardGerente({ usuario, onLogout }) {
   const [error, setError] = useState("");
   const [inicio, setInicio] = useState("2026-04-01");
   const [fin, setFin] = useState("2026-04-30");
+  const [verModuloExterno, setVerModuloExterno] = useState(false); // ← NUEVO
 
   const cargar = async (i, f) => {
     setLoading(true); setError("");
@@ -48,14 +50,77 @@ export default function DashboardGerente({ usuario, onLogout }) {
             <h1 className="dash-title">Dashboard Gerencial</h1>
             <p className="dash-subtitle">{data?.mensajeInformativo || "Vista global del negocio"}</p>
           </div>
-          <FiltroFechas
-            inicio={inicio} fin={fin}
-            onChange={handleFechaChange}
-            onAplicar={() => cargar(inicio, fin)}
-            onExportar={handleExportar}
-            showExport={true}
-          />
+
+          {/* ── Controles header ── */}
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+
+            {/* Botón Prueba de Módulos ← NUEVO */}
+            <button
+              onClick={() => setVerModuloExterno(!verModuloExterno)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: verModuloExterno ? "#1e3a5f" : "transparent",
+                border: `1px solid ${verModuloExterno ? "#2E75B6" : "rgba(255,255,255,0.2)"}`,
+                color: verModuloExterno ? "#93c5fd" : "rgba(255,255,255,0.6)",
+                padding: "8px 16px",
+                borderRadius: 8,
+                cursor: "pointer",
+                fontSize: 13,
+                fontWeight: 500,
+                transition: "all 0.2s"
+              }}
+            >
+              🔗 Prueba de Módulos
+            </button>
+
+            <FiltroFechas
+              inicio={inicio} fin={fin}
+              onChange={handleFechaChange}
+              onAplicar={() => cargar(inicio, fin)}
+              onExportar={handleExportar}
+              showExport={true}
+            />
+          </div>
         </div>
+
+        {/* ── Sección Módulo Externo ← NUEVO ── */}
+        {verModuloExterno && (
+          <div style={{
+            background: "rgba(14, 165, 233, 0.05)",
+            border: "1px solid rgba(14, 165, 233, 0.2)",
+            borderRadius: 12,
+            marginBottom: 24,
+            overflow: "hidden"
+          }}>
+            <div style={{
+              background: "rgba(14, 165, 233, 0.1)",
+              padding: "12px 24px",
+              borderBottom: "1px solid rgba(14, 165, 233, 0.2)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 16 }}>🔗</span>
+                <span style={{ color: "#93c5fd", fontWeight: 600, fontSize: 14 }}>
+                  Integración con Módulo CRM Base
+                </span>
+                <span style={{
+                  background: "#064e3b", color: "#34d399",
+                  padding: "2px 10px", borderRadius: 20, fontSize: 11
+                }}>
+                  ● Conexión activa
+                </span>
+              </div>
+              <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 12 }}>
+                crm-gestion.onrender.com
+              </span>
+            </div>
+            <ModuloExterno />
+          </div>
+        )}
 
         {loading && <LoadingState />}
         {error && <ErrorState mensaje={error} onRetry={() => cargar(inicio, fin)} />}
@@ -121,8 +186,18 @@ export default function DashboardGerente({ usuario, onLogout }) {
                 <h3 className="chart-title">Ventas por Canal / Campaña</h3>
                 <ResponsiveContainer width="100%" height={260}>
                   <PieChart>
-                    <Pie data={data.ventasPorCanal || []} dataKey="valor" nameKey="etiqueta" cx="50%" cy="50%" outerRadius={90} label={({ etiqueta, percent }) => `${etiqueta} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
-                      {(data.ventasPorCanal || []).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    <Pie
+                      data={data.ventasPorCanal || []}
+                      dataKey="valor"
+                      nameKey="etiqueta"
+                      cx="50%" cy="50%"
+                      outerRadius={90}
+                      label={({ etiqueta, percent }) => `${etiqueta} ${(percent * 100).toFixed(0)}%`}
+                      labelLine={false}
+                    >
+                      {(data.ventasPorCanal || []).map((_, i) => (
+                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      ))}
                     </Pie>
                     <Tooltip
                       contentStyle={{ background: "#1e293b", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8 }}
