@@ -6,14 +6,11 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins(
-            "http://localhost:5173",
-            "https://modulo-de-analitica-ingenieria-de-software-9j7e0ztpm.vercel.app"
-        )
-        .AllowAnyHeader()
-        .AllowAnyMethod();
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
     });
 });
 
