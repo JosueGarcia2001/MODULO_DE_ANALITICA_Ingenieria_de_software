@@ -1,118 +1,73 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using MySql.Data.MySqlClient;
+using ApiAnalitica.Core.Services;
 using System;
-using System.Collections.Generic;
+using System.Threading.Tasks;
 
-namespace ApiAnaliticaCRM.Controllers
+namespace ApiAnalitica.Web.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")] // Esto hace que la ruta base sea "api/analitica"
+    [Route("api/[controller]")]
     public class AnaliticaController : ControllerBase
     {
-        // Cadena de conexión directa a tu XAMPP
-        private readonly string connectionString = "Server=localhost;Database=crm_analitica_db;User ID=root;Password=;";
+        private readonly AnaliticaService _service;
+        public AnaliticaController(AnaliticaService service) => _service = service;
 
-        // ==========================================
-        // HU-01: Motor de Cálculo de Ventas y Embudo
-        // ==========================================
-        [HttpGet("dashboard/kpis")] // Ruta final: GET api/analitica/dashboard/kpis
-        public IActionResult GetDashboardKpis()
+        // =====================================
+        // DASHBOARDS (Fechas 100% Opcionales)
+        // =====================================
+
+        [HttpGet("gerente")]
+        public async Task<IActionResult> GetGerente([FromQuery] string? inicio = null, [FromQuery] string? fin = null)
         {
-            try
-            {
-                using (var connection = new MySqlConnection(connectionString))
-                {
-                    connection.Open();
+            DateTime? fechaInicio = string.IsNullOrWhiteSpace(inicio) ? null : DateTime.Parse(inicio);
+            DateTime? fechaFin = string.IsNullOrWhiteSpace(fin) ? null : DateTime.Parse(fin);
 
-                    decimal totalVentas = 0;
-                    var queryTotal = "SELECT SUM(monto) FROM ventas WHERE etapa = 'Ganado'";
-                    using (var commandTotal = new MySqlCommand(queryTotal, connection))
-                    {
-                        var result = commandTotal.ExecuteScalar();
-                        if (result != DBNull.Value) totalVentas = Convert.ToDecimal(result);
-                    }
-
-                    var embudo = new List<object>();
-                    var queryEmbudo = "SELECT etapa, COUNT(*) as cantidad FROM ventas GROUP BY etapa";
-                    using (var commandEmbudo = new MySqlCommand(queryEmbudo, connection))
-                    using (var reader = commandEmbudo.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            embudo.Add(new
-                            {
-                                etapa = reader["etapa"].ToString(),
-                                cantidad = Convert.ToInt32(reader["cantidad"])
-                            });
-                        }
-                    }
-
-                    return Ok(new
-                    {
-                        estado = 1,
-                        mensaje = "KPIs calculados con éxito",
-                        total_ventas_ganadas = totalVentas,
-                        embudo = embudo
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Error en el servidor: {ex.Message}");
-            }
+            return Ok(await _service.ObtenerDashboardDinamico(0, "Gerente", fechaInicio, fechaFin));
         }
 
-        // =======================================================
-        // HU-02: Motor de Rendimiento Comercial, Marketing y CSAT
-        // =======================================================
-        [HttpGet("reportes/rendimiento")] // Ruta final: GET api/analitica/reportes/rendimiento
-        public IActionResult GetRendimientoVendedores()
+        [HttpGet("supervisor/{id}")]
+        public async Task<IActionResult> GetSupervisor(int id, [FromQuery] string? inicio = null, [FromQuery] string? fin = null)
         {
+            DateTime? fechaInicio = string.IsNullOrWhiteSpace(inicio) ? null : DateTime.Parse(inicio);
+            DateTime? fechaFin = string.IsNullOrWhiteSpace(fin) ? null : DateTime.Parse(fin);
+
+            return Ok(await _service.ObtenerDashboardDinamico(id, "Supervisor", fechaInicio, fechaFin));
+        }
+
+        [HttpGet("vendedor/{id}")]
+        public async Task<IActionResult> GetVendedor(int id, [FromQuery] string? inicio = null, [FromQuery] string? fin = null)
+        {
+            DateTime? fechaInicio = string.IsNullOrWhiteSpace(inicio) ? null : DateTime.Parse(inicio);
+            DateTime? fechaFin = string.IsNullOrWhiteSpace(fin) ? null : DateTime.Parse(fin);
+
+            return Ok(await _service.ObtenerDashboardDinamico(id, "Vendedor", fechaInicio, fechaFin));
+        }
+
+        // =====================================
+        // EXPORTACIÓN (Fechas Obligatorias)
+        // =====================================
+
+        [HttpGet("exportar/{rol}/{id}")]
+        public async Task<IActionResult> ExportarReporte(string rol, int id, [FromQuery] string? inicio = null, [FromQuery] string? fin = null)
+        {
+            if (string.IsNullOrWhiteSpace(inicio) || string.IsNullOrWhiteSpace(fin))
+            {
+                return BadRequest(new { Error = "Las fechas de 'inicio' y 'fin' son estrictamente obligatorias para descargar el reporte." });
+            }
+
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
-                {
-                    connection.Open();
-                    var listaRendimiento = new List<object>();
+                DateTime fechaInicio = DateTime.Parse(inicio);
+                DateTime fechaFin = DateTime.Parse(fin);
 
-                    var query = @"
-                        SELECT 
-                            v.nombre AS nombre_vendedor, 
-                            ven.origen_campana, 
-                            SUM(ven.monto) AS monto_vendido, 
-                            ROUND(AVG(ven.csat), 1) AS csat_promedio 
-                        FROM ventas ven 
-                        JOIN vendedores v ON ven.vendedor_id = v.id 
-                        WHERE ven.etapa = 'Ganado' 
-                        GROUP BY v.nombre, ven.origen_campana 
-                        ORDER BY monto_vendido DESC";
+                var bytes = await _service.ExportarReporteCsv(id, rol, fechaInicio, fechaFin);
+                string nombreArchivo = $"Reporte_{rol}_{DateTime.Now:yyyyMMdd_HHmm}.csv";
 
-                    using (var command = new MySqlCommand(query, connection))
-                    using (var reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            listaRendimiento.Add(new
-                            {
-                                nombre_vendedor = reader["nombre_vendedor"].ToString(),
-                                origen_campana = reader["origen_campana"].ToString(),
-                                monto_vendido = Convert.ToDecimal(reader["monto_vendido"]),
-                                csat_promedio = reader["csat_promedio"] != DBNull.Value ? Convert.ToDecimal(reader["csat_promedio"]) : 0
-                            });
-                        }
-                    }
-
-                    return Ok(new
-                    {
-                        estado = 1,
-                        mensaje = "Reporte generado con éxito",
-                        datos_rendimiento = listaRendimiento
-                    });
-                }
+                return File(bytes, "text/csv", nombreArchivo);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Error en el servidor: {ex.Message}");
+                return BadRequest(new { Error = "Formato de fecha inválido o error interno: " + ex.Message });
             }
         }
     }

@@ -1,6 +1,7 @@
 using ApiAnalitica.Infrastructure.Data;
 using ApiAnalitica.Infrastructure.Repositories;
 using ApiAnalitica.Core.Interfaces;
+using ApiAnalitica.Core.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,9 +19,10 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Registro de DapperContext y repositorio
+// Registro de servicios
 builder.Services.AddSingleton<DapperContext>();
 builder.Services.AddScoped<IAnaliticaRepository, AnaliticaRepository>();
+builder.Services.AddScoped<AnaliticaService>();
 
 var app = builder.Build();
 
