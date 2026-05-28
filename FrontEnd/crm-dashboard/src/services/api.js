@@ -1,4 +1,4 @@
-const BASE = "https://localhost:59895";
+const BASE = "https://crm-analitica-backend.onrender.com";
 
 export async function loginUsuario(id) {
   const res = await fetch(`${BASE}/api/auth/login/${id}`);
